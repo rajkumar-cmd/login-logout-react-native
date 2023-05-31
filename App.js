@@ -5,10 +5,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 
 export default function App() {
+
+  const [loggedin, setLoggedin] = React.useState(false)
+  // MODAL STATES
   const [modalLogin, setModalLogin] = useState(false);
   const [modalSignup, setModalSignup] = useState(false);
   const [modalForgetPass, setModalForgetPass] = useState(false);
-  const [securityQuestion, setSecurityQuestion] = useState("java");
+
+  // SIGNUP STATES
+  const [valueSignup, setValueSignup] = useState({
+    name: "",
+    email: "",
+    password: "",
+    securityQuestion: "",
+    securityAnswer: ""
+  })
+
+  // LOGIN STATES
+  const [valueLogin, setValueLogin] = React.useState({
+    email: "",
+    password: ""
+  })
+
+
+  // MODAL LOGIC
   const handleLoginModal = () => {
     setModalLogin(true)
     setModalSignup(false)
@@ -24,10 +44,139 @@ export default function App() {
     setModalSignup(false)
     setModalForgetPass(true)
   }
-  const handleSubmitLogin = () => {
 
+
+  // LOGIN LOGICS
+  const handleInputLogin = (field, value) => {
+    setValueLogin({ ...valueLogin, [field]: value });
   }
-  return (
+  const handleSubmitLogin = async (event) => {
+    event.preventDefault();
+    console.log(valueLogin)
+    let res = await fetch("https://enchanting-cape-wasp.cyclic.app/user/login", {
+      method: "POST",
+      body: JSON.stringify(valueLogin),
+      headers: {
+        "Content-type": "application/json"
+      }
+    })
+    let data = await res.json();
+    if (data.msg === "Wrong Credientials") {
+      alert("Invalid Credentials");
+      return;
+    }
+    alert("You are now logged in");
+    setLoggedin(true);
+    setValueLogin({
+      email: "",
+      password: ""
+    })
+  }
+
+
+  // SIGNUP LOGICS
+  const handleInputSignup = (field, value) => {
+    setValueSignup({ ...valueSignup, [field]: value });
+  }
+  const handleSignupSubmit = async (event) => {
+    event.preventDefault();
+    console.log(valueSignup)
+    await fetch("https://enchanting-cape-wasp.cyclic.app/user/register", {
+      method: "POST",
+      body: JSON.stringify(valueSignup),
+      headers: {
+        "Content-type": "application/json"
+      }
+    })
+    setValueSignup({
+      name: "",
+      email: "",
+      password: "",
+      securityQuestion: "What is the name of your pet?",
+      securityAnswer: ""
+    })
+    alert("You are now signed up")
+  }
+
+
+  // GET QUESTION LOGICS
+  const [valueEmail, setValueEmail] = React.useState({
+    email: ""
+  })
+  const [securityQuestion, setSecurityQuestion] = React.useState(false)
+  const [valueAns, setValueAns] = React.useState({
+    email: "",
+    password: "",
+    securityAnswer: ""
+  })
+  const handleChangeEmail = (field, value) => {
+    setValueEmail({ ...valueEmail, [field]: value });
+  }
+  const handleChangeReset = (field, value) => {
+    setValueAns({ ...valueAns, [field]: value });
+  }
+  const handleGetQuestion = async (event) => {
+    event.preventDefault();
+    console.log(valueEmail);
+    let res = await fetch("https://enchanting-cape-wasp.cyclic.app/user/getQuestion", {
+      method: "POST",
+      body: JSON.stringify(valueEmail),
+      headers: {
+        "Content-type": "application/json"
+      }
+    })
+    let data = await res.json();
+    if (data.msg === "Email not found") {
+      alert("Email not found");
+      return;
+    } else {
+      alert("Security question acquired");
+    }
+    setValueAns({
+      email: data.email,
+      password: "",
+      securityAnswer: ""
+    })
+    setSecurityQuestion(data.SQ)
+    setValueEmail({
+      email: ""
+    })
+  }
+  const handlePassword = async (event) => {
+    event.preventDefault();
+    let res = await fetch("https://enchanting-cape-wasp.cyclic.app/user/forgetPassword", {
+      method: "POST",
+      body: JSON.stringify(valueAns),
+      headers: {
+        "Content-type": "application/json"
+      }
+    })
+    let data = await res.json();
+    if (data.msg === "Wrong Security Answer") {
+      alert("Wrong Security Answer");
+      return;
+    } else {
+      alert("Password changed successfully");
+    }
+    setValueAns({
+      email: "",
+      password: "",
+      securityAnswer: ""
+    })
+  }
+
+  const handleLogout = () => {
+    setLoggedin(false);
+  }
+  return loggedin ? (
+    <View>
+      <TouchableOpacity
+        style={styles.buttonTop}
+        onPress={handleLogout}>
+        <Text style={styles.text}>Logout</Text>
+      </TouchableOpacity>
+    </View>
+  ) : (
     <SafeAreaView style={styles.container}>
       {/* TOP BAR START */}
       <Text style={{
@@ -67,11 +216,16 @@ export default function App() {
             <Text style={styles.modalText}>Email</Text>
             <TextInput
               style={styles.modalInput}
+              value={valueLogin.email}
+              onChangeText={text => handleInputLogin("email", text)}
               placeholder='Enter Email'
             />
             <Text style={styles.modalText}>Password</Text>
             <TextInput
+              secureTextEntry
               style={styles.modalInput}
+              value={valueLogin.password}
+              onChangeText={text => handleInputLogin("password", text)}
               placeholder='Enter Password'
             />
             <TouchableOpacity
@@ -104,43 +258,58 @@ export default function App() {
             setModalForgetPass(false);
           }}
         >
-          <View style={styles.modalView}>
-            <Text style={styles.modalTextTopReset}>RESET PASSWORD</Text>
-            <Text style={styles.modalText}>Email</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder='Enter Email'
-            />
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleSubmitLogin}>
-              <Text style={styles.text}>Get Security Question</Text>
-            </TouchableOpacity>
+          <ScrollView contentContainerStyle={styles.contentContainer}>
+            <View style={styles.modalViewReset}>
+              <Text style={styles.modalTextTopReset}>RESET PASSWORD</Text>
+              <Text style={styles.modalText}>Email</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={valueEmail.email}
+                onChangeText={text => handleChangeEmail("email", text)}
+                placeholder='Enter Email'
+              />
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleGetQuestion}>
+                <Text style={styles.text}>Get Security Question</Text>
+              </TouchableOpacity>
 
-            {/* RESET PASSWORD START */}
-            <Text style={styles.modalText}>What is your favourite food ?</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder='Answer The Question'
-            />
-            <Text style={styles.modalText}>New Password</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder='Enter New Password'
-            />
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleSubmitLogin}>
-              <Text style={styles.text}>Set New Password</Text>
-            </TouchableOpacity>
-            {/* RESET PASSWORD END */}
+              {/* RESET PASSWORD START */}
+              {securityQuestion ? (
+                <View>
+                  <Text style={styles.modalText}>{securityQuestion}</Text>
+                  <TextInput
+                    secureTextEntry
+                    style={styles.modalInput}
+                    value={valueAns.securityAnswer}
+                    onChangeText={text => handleChangeReset("securityAnswer", text)}
+                    placeholder='Answer The Question'
+                  />
+                  <Text style={styles.modalText}>New Password</Text>
+                  <TextInput
+                    secureTextEntry
+                    style={styles.modalInput}
+                    value={valueAns.password}
+                    onChangeText={text => handleChangeReset("password", text)}
+                    placeholder='Enter New Password'
+                  />
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handlePassword}>
+                    <Text style={styles.text}>Set New Password</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (null)}
 
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => setModalForgetPass(false)}>
-              <Text style={styles.text}>Close</Text>
-            </TouchableOpacity>
-          </View>
+              {/* RESET PASSWORD END */}
+
+              <TouchableOpacity
+                style={styles.buttonResetClose}
+                onPress={() => setModalForgetPass(false)}>
+                <Text style={styles.text}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </Modal>
       </View>
       {/* FORGOT PASSWORD END */}
@@ -162,24 +331,31 @@ export default function App() {
               <Text style={styles.modalText}>Username</Text>
               <TextInput
                 style={styles.modalInput}
+                value={valueSignup.name}
+                onChangeText={text => handleInputSignup("name", text)}
                 placeholder='Enter Username'
               />
               <Text style={styles.modalText}>Enter Email</Text>
               <TextInput
                 style={styles.modalInput}
+                value={valueSignup.email}
+                onChangeText={text => handleInputSignup("email", text)}
                 placeholder='Enter Email'
               />
               <Text style={styles.modalText}>Enter Password</Text>
               <TextInput
                 secureTextEntry
                 style={styles.modalInput}
+                value={valueSignup.password}
+                onChangeText={text => handleInputSignup("password", text)}
                 placeholder='Enter Password'
               />
               <Text style={styles.modalText}>Security Question</Text>
               <Picker
-                selectedValue={securityQuestion}
+                selectedValue={valueSignup.securityQuestion}
                 style={styles.selectTag}
-                onValueChange={(itemValue, itemIndex) => setSecurityQuestion(itemValue)}
+                value={valueSignup.securityQuestion}
+                onValueChange={(itemValue, itemIndex) => handleInputSignup("securityQuestion", itemValue)}
               >
                 <Picker.Item style={styles.selectTagText} label="What is the name of your pet?" value="What is the name of your pet?" />
                 <Picker.Item style={styles.selectTagText} label="What is your favourite food ?" value="What is your favourite food ?" />
@@ -188,10 +364,13 @@ export default function App() {
               <Text style={styles.modalText}>Security Answer</Text>
               <TextInput
                 style={styles.modalInput}
+                value={valueSignup.securityAnswer}
+                onChangeText={text => handleInputSignup("securityAnswer", text)}
                 placeholder='Enter Security Answer'
               />
               <TouchableOpacity
                 style={styles.button}
+                onPress={handleSignupSubmit}
               >
                 <Text style={styles.text}>Submit</Text>
               </TouchableOpacity>
@@ -235,7 +414,7 @@ const styles = StyleSheet.create({
   button: {
     paddingTop: "5%",
     paddingBottom: "5%",
-    textAlign:'center',
+    textAlign: 'center',
     marginTop: "2%",
     borderRadius: 10,
     backgroundColor: "#6481FC",
@@ -290,9 +469,21 @@ const styles = StyleSheet.create({
     marginLeft: "5%",
     paddingRight: "5%",
     marginTop: "20%",
-    paddingBottom:"8%",
+    paddingBottom: "8%",
     borderTopRightRadius: 20,
     borderTopLeftRadius: 20,
+    backgroundColor: "red"
+  },
+  modalViewReset: {
+    flex: 1,
+    width: "90%",
+    paddingTop: "5%",
+    paddingLeft: "5%",
+    marginLeft: "5%",
+    paddingRight: "5%",
+    marginTop: "20%",
+    paddingBottom: "8%",
+    borderRadius: 20,
     backgroundColor: "red"
   },
   selectTag: {
@@ -308,5 +499,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 30,
     marginBottom: "5%"
+  },
+  buttonResetClose: {
+    paddingTop: "5%",
+    paddingBottom: "5%",
+    textAlign: 'center',
+    marginTop: "2%",
+    marginBottom: "5%",
+    borderRadius: 10,
+    backgroundColor: "#6481FC",
   }
 });
